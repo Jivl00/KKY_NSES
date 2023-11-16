@@ -131,30 +131,42 @@ class DNNClassifier(object):
 
     @staticmethod
     def sigmoid(Z, derivative=False):
-        """
-        Computes the sigmoid function.
-
-        Parameters:
-        Z (numpy.ndarray): Input data.
-
-        Returns:
-        numpy.ndarray: Output data.
-        """
         if derivative:
             return DNNClassifier.sigmoid(Z) * (1 - DNNClassifier.sigmoid(Z))
         return 1 / (1 + np.exp(-Z))
 
     @staticmethod
+    def sgn(Z, derivative=False):
+        if derivative:
+            return 1
+        return np.sign(Z)
+
+    @staticmethod
+    def linear(Z, derivative=False):
+        if derivative:
+            return 1
+        return Z
+
+    @staticmethod
+    def step(Z, derivative=False):
+        if derivative:
+            return 0
+        return np.where(Z > 0, 1, 0)
+
+    @staticmethod
     def relu(Z, derivative=False):
-        """
-        Computes the relu function.
-
-        Parameters:
-        Z (numpy.ndarray): Input data.
-
-        Returns:
-        numpy.ndarray: Output data.
-        """
         if derivative:
             return np.where(Z > 0, 1, 0)
         return np.maximum(0, Z)
+
+    @staticmethod
+    def tanh(Z, derivative=False):
+        if derivative:
+            return 1 - np.tanh(Z)**2
+        return np.tanh(Z)
+
+    @staticmethod
+    def softmax(Z, derivative=False):
+        if derivative:
+            raise NotImplementedError("Softmax is only supported in the output layer.")
+        return np.exp(Z) / np.sum(np.exp(Z), axis=0)
