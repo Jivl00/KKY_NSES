@@ -41,7 +41,6 @@ class DNNClassifier(object):
             y = Y[i, :]
             cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T)) # TODO: MSE
 
-        self.cost_history.append(cost)
         return cost
 
     def backward_propagation(self, AL, Y):
@@ -80,16 +79,25 @@ class DNNClassifier(object):
 
 
 
-    def train(self, X, Y, learning_rate=0.01, epochs=100, print_cost=False):
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False):
         print("Training model...")
         self.cost_history = []
-        for i in range(0, epochs): # TODO: batch gradient descent
-            AL = self.forward_propagation(X)
-            cost = self.cost(AL, Y)
-            grads = self.backward_propagation(AL, Y)
-            self.update_parameters(grads, learning_rate)
-            if print_cost and i % 100 == 0 or i == epochs - 1:
-                print("Cost after iteration {}: {}".format(i, np.squeeze(cost)))
+        for i in range(0, epochs):
+            permutation = list(np.random.permutation(X.shape[1]))
+            X = X[:, permutation]
+            Y = Y[:, permutation]
+            epoch_cost = []
+            for batch in range(0, X.shape[1], batch_size):
+                X_batch = X[:, batch:batch + batch_size]
+                Y_batch = Y[:, batch:batch + batch_size]
+                AL = self.forward_propagation(X_batch)
+                cost = self.cost(AL, Y_batch)
+                epoch_cost.append(cost)
+                grads = self.backward_propagation(AL, Y_batch)
+                self.update_parameters(grads, learning_rate)
+            self.cost_history.append(np.mean(epoch_cost))
+            if print_cost:
+                print("Cost after epoch {}: {}".format(i, np.squeeze(cost)))
 
         return self.cost_history
 
