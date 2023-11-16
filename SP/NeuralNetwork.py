@@ -1,0 +1,143 @@
+import numpy as np
+
+
+class DNNClassifier(object):
+
+    def __init__(self, layers_dims, activations):
+        self.layers_dims = layers_dims
+        self.num_layers = len(layers_dims)
+        self.activations = activations
+        self.parameters = {}
+        self.cost_history = []
+        self.caches = []
+
+        np.random.seed(1)
+        for l in range(1, self.num_layers):
+            self.parameters['W' + str(l)] = np.random.randn(layers_dims[l], layers_dims[l - 1]) / np.sqrt(layers_dims[l - 1])
+            self.parameters['b' + str(l)] = np.zeros((layers_dims[l], 1))
+
+    def forward_propagation(self, X):
+        A = X
+        self.caches = []
+        for l in range(1, self.num_layers):
+            A_prev = A
+            W = self.parameters['W' + str(l)]
+            b = self.parameters['b' + str(l)]
+            Z = W.dot(A_prev) + b
+            A = self.activations[l-1](Z)
+            cache = ((A_prev, W, b), Z)
+            self.caches.append(cache)
+
+        return A
+
+    def cost(self, AL, Y): # TODO: MSE
+
+        m = Y.shape[1] # number of examples
+        n = Y.shape[0] # number of classes
+        cost = np.zeros((n, 1)) + 1
+
+        for i in range(n):
+            al = AL[i, :]
+            y = Y[i, :]
+            cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T)) # TODO: MSE
+
+        self.cost_history.append(cost)
+        return cost
+
+    def backward_propagation(self, AL, Y):
+        grads = {}
+        L = self.num_layers - 1  # number of layers
+
+        # Initialize the backpropagation
+        dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)) # TODO: MSE
+
+        for l in reversed(range(L)):
+            current_cache = self.caches[l]
+            linear_cache, Z = current_cache
+
+            A_prev, W, b = linear_cache
+            m = A_prev.shape[1]
+
+            dZ = self.activations[l](Z, derivative=True)* dA # dL/dZ = dL/dA * dA/dZ
+
+            # TODO: MSE
+            dW = 1. / m * np.dot(dZ, A_prev.T)  # dL/dW = dL/dA * dA/dZ * dZ/dW
+            db = 1. / m * np.sum(dZ, axis=1, keepdims=True)  # dL/db = dL/dA * dA/dZ * dZ/db
+            dA_prev = np.dot(W.T, dZ)  # dL/dA_prev = dL/dA * dA/dZ * (dZ/dA_prev = W)
+
+            grads["dA" + str(l)] = dA_prev
+            grads["dW" + str(l + 1)] = dW
+            grads["db" + str(l + 1)] = db
+
+            dA = grads["dA" + str(l)]
+
+        return grads
+
+    def update_parameters(self, grads, learning_rate):
+        for l in range(self.num_layers-1):
+            self.parameters["W" + str(l + 1)] -= learning_rate * grads["dW" + str(l + 1)]
+            self.parameters["b" + str(l + 1)] -= learning_rate * grads["db" + str(l + 1)]
+
+
+
+    def train(self, X, Y, learning_rate=0.01, epochs=100, print_cost=False):
+        print("Training model...")
+        self.cost_history = []
+        for i in range(0, epochs): # TODO: batch gradient descent
+            AL = self.forward_propagation(X)
+            cost = self.cost(AL, Y)
+            grads = self.backward_propagation(AL, Y)
+            self.update_parameters(grads, learning_rate)
+            if print_cost and i % 100 == 0 or i == epochs - 1:
+                print("Cost after iteration {}: {}".format(i, np.squeeze(cost)))
+
+        return self.cost_history
+
+    def predict(self, X):
+        # Forward propagation
+        preds = self.forward_propagation(X)
+        y_pred = np.argmax(preds, axis=0) + 1
+        return y_pred
+
+    def evaluate(self, X, Y, confusion_matrix=False):
+        y_pred = self.predict(X)-1
+        Y = np.array(Y, dtype=int)[0]-1
+        accuracy = np.sum(y_pred == Y) / Y.shape[0]
+        if confusion_matrix:
+            K = len(np.unique(Y))  # Number of classes
+            confusion_matrix = np.bincount(Y * K + y_pred).reshape((K, K))
+
+            return accuracy, confusion_matrix
+        return accuracy
+
+
+    @staticmethod
+    def sigmoid(Z, derivative=False):
+        """
+        Computes the sigmoid function.
+
+        Parameters:
+        Z (numpy.ndarray): Input data.
+
+        Returns:
+        numpy.ndarray: Output data.
+        """
+        if derivative:
+            return DNNClassifier.sigmoid(Z) * (1 - DNNClassifier.sigmoid(Z))
+        return 1 / (1 + np.exp(-Z))
+
+    @staticmethod
+    def relu(Z, derivative=False):
+        """
+        Computes the relu function.
+
+        Parameters:
+        Z (numpy.ndarray): Input data.
+
+        Returns:
+        numpy.ndarray: Output data.
+        """
+        if derivative:
+            return np.where(Z > 0, 1, 0)
+        return np.maximum(0, Z)
+
