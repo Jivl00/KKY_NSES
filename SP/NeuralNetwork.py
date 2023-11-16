@@ -4,6 +4,7 @@ import numpy as np
 class DNNClassifier(object):
 
     def __init__(self, layers_dims, activations):
+        assert len(layers_dims) == len(activations) + 1, "Number of layers must be equal to the number of activations + 1."
         self.layers_dims = layers_dims
         self.num_layers = len(layers_dims)
         self.activations = activations
@@ -13,7 +14,8 @@ class DNNClassifier(object):
 
         np.random.seed(1)
         for l in range(1, self.num_layers):
-            self.parameters['W' + str(l)] = np.random.randn(layers_dims[l], layers_dims[l - 1]) / np.sqrt(layers_dims[l - 1])
+            self.parameters['W' + str(l)] = np.random.randn(layers_dims[l], layers_dims[l - 1]) / np.sqrt(
+                layers_dims[l - 1])
             self.parameters['b' + str(l)] = np.zeros((layers_dims[l], 1))
 
     def forward_propagation(self, X):
@@ -24,22 +26,22 @@ class DNNClassifier(object):
             W = self.parameters['W' + str(l)]
             b = self.parameters['b' + str(l)]
             Z = W.dot(A_prev) + b
-            A = self.activations[l-1](Z)
+            A = self.activations[l - 1](Z)
             cache = ((A_prev, W, b), Z)
             self.caches.append(cache)
 
         return A
 
-    def cost(self, AL, Y): # TODO: MSE
+    def cost(self, AL, Y):  # TODO: MSE
 
-        m = Y.shape[1] # number of examples
-        n = Y.shape[0] # number of classes
+        m = Y.shape[1]  # number of examples
+        n = Y.shape[0]  # number of classes
         cost = np.zeros((n, 1)) + 1
 
         for i in range(n):
             al = AL[i, :]
             y = Y[i, :]
-            cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T)) # TODO: MSE
+            cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T))  # TODO: MSE
 
         return cost
 
@@ -48,7 +50,7 @@ class DNNClassifier(object):
         L = self.num_layers - 1  # number of layers
 
         # Initialize the backpropagation
-        dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)) # TODO: MSE
+        dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # TODO: MSE
 
         for l in reversed(range(L)):
             current_cache = self.caches[l]
@@ -57,7 +59,7 @@ class DNNClassifier(object):
             A_prev, W, b = linear_cache
             m = A_prev.shape[1]
 
-            dZ = self.activations[l](Z, derivative=True)* dA # dL/dZ = dL/dA * dA/dZ
+            dZ = self.activations[l](Z, derivative=True) * dA  # dL/dZ = dL/dA * dA/dZ
 
             # TODO: MSE
             dW = 1. / m * np.dot(dZ, A_prev.T)  # dL/dW = dL/dA * dA/dZ * dZ/dW
@@ -73,15 +75,19 @@ class DNNClassifier(object):
         return grads
 
     def update_parameters(self, grads, learning_rate):
-        for l in range(self.num_layers-1):
+        for l in range(self.num_layers - 1):
             self.parameters["W" + str(l + 1)] -= learning_rate * grads["dW" + str(l + 1)]
             self.parameters["b" + str(l + 1)] -= learning_rate * grads["db" + str(l + 1)]
-
-
 
     def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False):
         print("Training model...")
         self.cost_history = []
+        assert epochs > 0, "Epochs must be greater than 0."
+        assert batch_size > 0, "Batch size must be greater than 0."
+        assert learning_rate > 0, "Learning rate must be greater than 0."
+        assert X.shape[1] == Y.shape[1], "Number of examples must be equal in X and Y."
+        assert X.shape[0] == self.layers_dims[0], "Input shape must be equal to the number of features."
+        assert Y.shape[0] == self.layers_dims[-1], "Output shape must be equal to the number of classes."
         for i in range(0, epochs):
             permutation = list(np.random.permutation(X.shape[1]))
             X = X[:, permutation]
@@ -102,14 +108,19 @@ class DNNClassifier(object):
         return self.cost_history
 
     def predict(self, X):
+        assert X.shape[0] == self.layers_dims[0], "Input shape must be equal to the number of features."
+
         # Forward propagation
         preds = self.forward_propagation(X)
         y_pred = np.argmax(preds, axis=0) + 1
         return y_pred
 
     def evaluate(self, X, Y, confusion_matrix=False):
-        y_pred = self.predict(X)-1
-        Y = np.array(Y, dtype=int)[0]-1
+        assert X.shape[1] == Y.shape[1], "Number of examples must be equal in X and Y."
+        assert X.shape[0] == self.layers_dims[0], "Input shape must be equal to the number of features."
+
+        y_pred = self.predict(X) - 1
+        Y = np.array(Y, dtype=int)[0] - 1
         accuracy = np.sum(y_pred == Y) / Y.shape[0]
         if confusion_matrix:
             K = len(np.unique(Y))  # Number of classes
@@ -117,7 +128,6 @@ class DNNClassifier(object):
 
             return accuracy, confusion_matrix
         return accuracy
-
 
     @staticmethod
     def sigmoid(Z, derivative=False):
@@ -148,4 +158,3 @@ class DNNClassifier(object):
         if derivative:
             return np.where(Z > 0, 1, 0)
         return np.maximum(0, Z)
-
