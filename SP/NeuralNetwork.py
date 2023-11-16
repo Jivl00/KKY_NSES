@@ -34,23 +34,32 @@ class DNNClassifier(object):
 
     def cost(self, AL, Y):  # TODO: MSE
 
-        m = Y.shape[1]  # number of examples
-        n = Y.shape[0]  # number of classes
-        cost = np.zeros((n, 1)) + 1
-
-        for i in range(n):
-            al = AL[i, :]
-            y = Y[i, :]
-            cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T))  # TODO: MSE
-
-        return cost
+        if self.activations[-1] == DNNClassifier.softmax:
+            # categorical cross-entropy
+            return -np.mean(np.sum(Y * np.log(AL), axis=0))
+        else:
+            # binary cross-entropy
+            return np.mean(np.sum(-Y * np.log(AL) - (1 - Y) * np.log(1 - AL), axis=0))
+        # m = Y.shape[1]  # number of examples
+        # n = Y.shape[0]  # number of classes
+        # cost = np.zeros((n, 1)) + 1
+        #
+        # for i in range(n):
+        #     al = AL[i, :]
+        #     y = Y[i, :]
+        #     cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T))  # TODO: MSE
+        #
+        # return cost
 
     def backward_propagation(self, AL, Y):
         grads = {}
         L = self.num_layers - 1  # number of layers
 
         # Initialize the backpropagation
-        dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # TODO: MSE
+        if self.activations[-1] == DNNClassifier.softmax:
+            dA = AL - Y
+        else:
+            dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # TODO: MSE
 
         for l in reversed(range(L)):
             current_cache = self.caches[l]
@@ -59,7 +68,10 @@ class DNNClassifier(object):
             A_prev, W, b = linear_cache
             m = A_prev.shape[1]
 
-            dZ = self.activations[l](Z, derivative=True) * dA  # dL/dZ = dL/dA * dA/dZ
+            if self.activations[-1] == DNNClassifier.softmax:
+                dZ = dA
+            else:
+                dZ = self.activations[l](Z, derivative=True) * dA  # dL/dZ = dL/dA * dA/dZ
 
             # TODO: MSE
             dW = 1. / m * np.dot(dZ, A_prev.T)  # dL/dW = dL/dA * dA/dZ * dZ/dW
