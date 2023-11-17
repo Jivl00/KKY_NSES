@@ -1,6 +1,7 @@
 import numpy as np
-from IPython.display import clear_output
-from matplotlib import pyplot as plt
+from visualization import live_plot
+
+# TODO early stopping
 
 class DNNClassifier(object):
 
@@ -41,16 +42,6 @@ class DNNClassifier(object):
         else:
             # binary cross-entropy
             return np.mean(np.sum(-Y * np.log(AL) - (1 - Y) * np.log(1 - AL), axis=0))
-        # m = Y.shape[1]  # number of examples
-        # n = Y.shape[0]  # number of classes
-        # cost = np.zeros((n, 1)) + 1
-        #
-        # for i in range(n):
-        #     al = AL[i, :]
-        #     y = Y[i, :]
-        #     cost[i, :] = (1. / m) * (-np.dot(y, np.log(al).T) - np.dot(1 - y, np.log(1 - al).T))  # TODO: MSE
-        #
-        # return cost
 
     def backward_propagation(self, AL, Y):
         grads = {}
@@ -187,14 +178,48 @@ class DNNClassifier(object):
         return np.exp(Z) / np.sum(np.exp(Z), axis=0)
 
 
-def live_plot(cost, figsize=(7,5), title=''):
-    clear_output(wait=True)
-    plt.figure(figsize=figsize)
-    # for label,data in data_dict.items():
-    #     plt.plot(data, label=label)
-    plt.plot(cost, label='cost')
-    plt.title(title)
-    plt.grid(True)
-    plt.xlabel('epoch')
-    plt.legend(loc='center left') # the plot evolves to the right
-    plt.show()
+class OneVsAllClassifier(object):
+    def __init__(self, layers_dims, activations, num_classes):
+        self.layers_dims = layers_dims
+        self.activations = activations
+        self.num_classes = num_classes
+        self.classifiers = []
+
+        for i in range(num_classes):
+            self.classifiers.append(DNNClassifier(layers_dims, activations))
+
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False):
+        '''
+
+        :param X:
+        :param Y: raw data, not one-hot encoded
+        :param learning_rate:
+        :param epochs:
+        :param batch_size:
+        :param print_cost:
+        :return:
+        '''
+        for i in range(self.num_classes):
+            print("Training classifier {}...".format(i))
+            y_train_binary = np.array([1 if Y[j] == i+1 else 0 for j in range(len(Y))])
+            y_train_binary = y_train_binary.reshape(1, y_train_binary.shape[0])
+            self.classifiers[i].train(X, y_train_binary, learning_rate, epochs, batch_size, print_cost=print_cost,plot_cost=False)
+
+    def predict(self, X):
+        predictions = [None] * self.num_classes
+        for i in range(self.num_classes):
+            predictions[i] = self.classifiers[i].forward_propagation(X)[0]
+
+        return [np.argmax([predictions[j][i] for j in range(self.num_classes)])+1 for i in range(len(predictions[0]))]
+
+    def evaluate(self, X, Y, confusion_matrix=False):
+        y_pred = np.array(self.predict(X))
+        Y = np.array(Y, dtype=int)[0]
+        accuracy = np.sum(y_pred == Y) / Y.shape[0]
+        if confusion_matrix:
+            K = len(np.unique(Y))
+            y_pred = y_pred - 1
+            Y = Y - 1
+            confusion_matrix = np.bincount(Y * K + y_pred).reshape((K, K))
+            return accuracy, confusion_matrix
+        return accuracy

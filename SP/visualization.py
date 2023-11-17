@@ -1,6 +1,8 @@
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+from IPython.display import clear_output
+from matplotlib import pyplot as plt
 
 cmap = 'rainbow'
 
@@ -38,4 +40,14 @@ def plot_confusion_matrix(cm):
     sns.heatmap(cm, annot=True, cmap=cmap, alpha=0.4, cbar=False)
     plt.xlabel('Predicted')
     plt.ylabel('True')
+    plt.show()
+
+def live_plot(cost, figsize=(7,5), title=''):
+    clear_output(wait=True)
+    plt.figure(figsize=figsize)
+    plt.plot(cost, label='cost')
+    plt.title(title)
+    plt.grid(True)
+    plt.xlabel('epoch')
+    plt.legend(loc='center left') # the plot evolves to the right
     plt.show()
