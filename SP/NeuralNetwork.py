@@ -1,5 +1,6 @@
 import numpy as np
-
+from IPython.display import clear_output
+from matplotlib import pyplot as plt
 
 class DNNClassifier(object):
 
@@ -91,7 +92,7 @@ class DNNClassifier(object):
             self.parameters["W" + str(l + 1)] -= learning_rate * grads["dW" + str(l + 1)]
             self.parameters["b" + str(l + 1)] -= learning_rate * grads["db" + str(l + 1)]
 
-    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False):
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False, plot_cost=True):
         print("Training model...")
         self.cost_history = []
         assert epochs > 0, "Epochs must be greater than 0."
@@ -114,6 +115,8 @@ class DNNClassifier(object):
                 grads = self.backward_propagation(AL, Y_batch)
                 self.update_parameters(grads, learning_rate)
             self.cost_history.append(np.mean(epoch_cost))
+            if plot_cost:
+                live_plot(self.cost_history, title='Cost')
             if print_cost:
                 print("Cost after epoch {}: {}".format(i, np.squeeze(cost)))
 
@@ -182,3 +185,16 @@ class DNNClassifier(object):
         if derivative:
             raise NotImplementedError("Softmax is only supported in the output layer.")
         return np.exp(Z) / np.sum(np.exp(Z), axis=0)
+
+
+def live_plot(cost, figsize=(7,5), title=''):
+    clear_output(wait=True)
+    plt.figure(figsize=figsize)
+    # for label,data in data_dict.items():
+    #     plt.plot(data, label=label)
+    plt.plot(cost, label='cost')
+    plt.title(title)
+    plt.grid(True)
+    plt.xlabel('epoch')
+    plt.legend(loc='center left') # the plot evolves to the right
+    plt.show()
