@@ -16,13 +16,16 @@ def plot_data(data, title='Data'):
     """
     sns.set_style('whitegrid')
     plt.figure(figsize=(8, 6))
-    plt.scatter(data[:, 0], data[:, 1], cmap=cmap, c=(data[:, 2]), edgecolors='k')
+    scatter = plt.scatter(data[:, 0], data[:, 1], cmap=cmap, c=(data[:, 2]), edgecolors='k')
     plt.title(title)
+    num_classes = len(np.unique(data[:, 2]))
+    legend = ["Class "+ str(i) for i in range(num_classes)]
+    plt.legend(handles=scatter.legend_elements()[0], labels=legend)
     plt.grid('on')
     plt.show()
 
 
-def plot_decision_boundary(data, nn, title='Decision Boundary'):
+def plot_decision_boundary(data, nn, title='Decision Boundary', markersize=None):
     """
     Plots the decision boundary of the neural network nn.
 
@@ -45,7 +48,13 @@ def plot_decision_boundary(data, nn, title='Decision Boundary'):
     boundary = boundary.reshape(xx.shape)
     plt.figure(figsize=(8, 6))
     plt.contourf(xx, yy, boundary, alpha=0.4, cmap=cmap)
-    plt.scatter(data[:, 0], data[:, 1], cmap=cmap, c=(data[:, 2]), edgecolors='k')
+    if markersize is None:
+        scatter = plt.scatter(data[:, 0], data[:, 1], cmap=cmap, c=(data[:, 2]), edgecolors='k')
+    else:
+        scatter = plt.scatter(data[:, 0], data[:, 1], cmap=cmap, c=(data[:, 2]), edgecolors='k', s=markersize)
+    num_classes = len(np.unique(data[:, 2]))
+    legend = ["Class " + str(i) for i in range(num_classes)]
+    plt.legend(handles=scatter.legend_elements()[0], labels=legend)
     plt.title(title)
     plt.show()
 
@@ -78,5 +87,4 @@ def live_plot(cost, figsize=(7,5), title=''):
     plt.title(title)
     plt.grid(True)
     plt.xlabel('epoch')
-    plt.legend(loc='center left') # the plot evolves to the right
     plt.show()

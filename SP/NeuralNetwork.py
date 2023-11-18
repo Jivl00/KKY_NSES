@@ -2,7 +2,6 @@ import numpy as np
 from visualization import live_plot
 
 
-
 class DNNClassifier(object):
 
     def __init__(self, layers_dims, activations):
@@ -58,12 +57,11 @@ class DNNClassifier(object):
                         softmax: categorical cross-entropy, otherwise: binary cross-entropy
         :return: cost
         """
-        if cost_fun == 'MSE':
-            return np.mean((AL - Y) ** 2)/2
-
         if self.activations[-1] == DNNClassifier.softmax:
             # categorical cross-entropy
             return -np.mean(np.sum(Y * np.log(AL), axis=0))
+        if cost_fun == 'MSE':
+            return np.mean((AL - Y) ** 2) / 2
         else:
             # binary cross-entropy
             return np.mean(np.sum(-Y * np.log(AL) - (1 - Y) * np.log(1 - AL), axis=0))
@@ -120,7 +118,8 @@ class DNNClassifier(object):
             self.parameters["W" + str(l + 1)] -= learning_rate * grads["dW" + str(l + 1)]
             self.parameters["b" + str(l + 1)] -= learning_rate * grads["db" + str(l + 1)]
 
-    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1,cost_fun=None, tolerance=None, min_cost=None, print_cost=False, plot_cost=True):
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, cost_fun=None, tolerance=None, min_cost=None,
+              print_cost=False, plot_cost=True):
         """
         Train the model
         :param X: input data - shape (input size, number of examples)
@@ -160,7 +159,8 @@ class DNNClassifier(object):
             self.cost_history.append(np.mean(epoch_cost))
             if plot_cost:
                 live_plot(self.cost_history, title='Cost')
-            if tolerance is not None and len(self.cost_history) > 1 and abs(self.cost_history[-1] - self.cost_history[-2]) < tolerance:
+            if tolerance is not None and len(self.cost_history) > 1 and abs(
+                    self.cost_history[-1] - self.cost_history[-2]) < tolerance:
                 print("Early stopping at epoch {}.".format(i))
                 print("Cost after epoch {}: {}".format(i, np.squeeze(self.cost_history[-1])))
                 print("Tolerance: {}".format(tolerance))
@@ -185,6 +185,10 @@ class DNNClassifier(object):
 
         # Forward propagation
         preds = self.forward_propagation(X)
+        if self.layers_dims[-1] == 1:
+            # y_pred = [1 if i > 0.5 else 0 for i in preds[0]]
+            y_pred = np.where(preds > 0.5, 1, 0)
+            return y_pred
         y_pred = np.argmax(preds,
                            axis=0) + 1  # get the index of the max value in each column, +1 to get the class (indexing starts from 0)
         return y_pred
@@ -328,7 +332,8 @@ class OneVsAllClassifier(object):
         for i in range(num_classes):
             self.classifiers.append(DNNClassifier(layers_dims, activations))  # create a classifier for each class
 
-    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False):
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, cost_fun=None, tolerance=None, min_cost=None,
+              print_cost=False, plot_cost=False):
         """
         Train the models for each class - one-vs-all, each classifier is trained to predict one class vs. all the others
         :param X: input data - shape (input size, number of examples)
@@ -336,15 +341,20 @@ class OneVsAllClassifier(object):
         :param learning_rate: learning rate of the gradient descent update rule
         :param epochs: number of epochs of the optimization loop
         :param batch_size: size of a mini batch
+        :param cost_fun: cost function to use - if None, the cost function is automatically selected based on the output layer activation function
+        :param tolerance: tolerance for early stopping
+        :param min_cost: minimum cost for early stopping
         :param print_cost: whether to print the cost every epoch
+        :param plot_cost: whether to plot the cost every epoch - live plot
         """
         for i in range(self.num_classes):
             print("Training classifier {}...".format(i))
             y_train_binary = np.array([1 if Y[j] == i + 1 else 0 for j in range(
                 len(Y))])  # transform the labels to binary - 1 if the class is i, 0 otherwise
-            y_train_binary = y_train_binary.reshape(1, y_train_binary.shape[0]) # reshape to (1, number of examples)
-            self.classifiers[i].train(X, y_train_binary, learning_rate, epochs, batch_size, print_cost=print_cost,
-                                      plot_cost=False)
+            y_train_binary = y_train_binary.reshape(1, y_train_binary.shape[0])  # reshape to (1, number of examples)
+            self.classifiers[i].train(X, y_train_binary, learning_rate, epochs, batch_size, cost_fun=cost_fun,
+                                      tolerance=tolerance, min_cost=min_cost,
+                                      print_cost=print_cost, plot_cost=plot_cost)
 
     def predict(self, X):
         """
