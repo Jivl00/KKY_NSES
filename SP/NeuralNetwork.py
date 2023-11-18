@@ -116,7 +116,7 @@ class DNNClassifier(object):
             self.parameters["W" + str(l + 1)] -= learning_rate * grads["dW" + str(l + 1)]
             self.parameters["b" + str(l + 1)] -= learning_rate * grads["db" + str(l + 1)]
 
-    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, print_cost=False, plot_cost=True):
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, tolerance=None, min_cost=None, print_cost=False, plot_cost=True):
         """
         Train the model
         :param X: input data - shape (input size, number of examples)
@@ -124,6 +124,8 @@ class DNNClassifier(object):
         :param learning_rate: learning rate of the gradient descent update rule
         :param epochs: number of epochs of the optimization loop
         :param batch_size: size of a mini batch
+        :param tolerance: tolerance for early stopping
+        :param min_cost: minimum cost for early stopping
         :param print_cost: whether to print the cost every epoch
         :param plot_cost: whether to plot the cost every epoch - live plot
         :return: cost_history - list of costs per epoch
@@ -153,8 +155,19 @@ class DNNClassifier(object):
             self.cost_history.append(np.mean(epoch_cost))
             if plot_cost:
                 live_plot(self.cost_history, title='Cost')
+            if tolerance is not None and len(self.cost_history) > 1 and abs(self.cost_history[-1] - self.cost_history[-2]) < tolerance:
+                print("Early stopping at epoch {}.".format(i))
+                print("Cost after epoch {}: {}".format(i, np.squeeze(self.cost_history[-1])))
+                print("Tolerance: {}".format(tolerance))
+                return self.cost_history
+            if min_cost is not None and self.cost_history[-1] < min_cost:
+                print("Early stopping at epoch {}.".format(i))
+                print("Cost after epoch {}: {}".format(i, np.squeeze(self.cost_history[-1])))
+                print("Minimum cost: {}".format(min_cost))
+                self.cost_history.append(np.mean(epoch_cost))
+                return self.cost_history
             if print_cost:
-                print("Cost after epoch {}: {}".format(i, np.squeeze(cost)))
+                print("Cost after epoch {}: {}".format(i, np.squeeze(self.cost_history[-1])))
 
         return self.cost_history
 
