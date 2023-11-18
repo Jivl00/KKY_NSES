@@ -2,7 +2,6 @@ import numpy as np
 from visualization import live_plot
 
 
-# TODO early stopping
 
 class DNNClassifier(object):
 
@@ -50,13 +49,17 @@ class DNNClassifier(object):
 
         return A
 
-    def cost(self, AL, Y):  # TODO: MSE
+    def cost(self, AL, Y, cost_fun=None):
         """
         Compute the cost function
         :param AL: output of the model
         :param Y: true labels vector - shape (output size, number of examples)
+        :param cost_fun: cost function to use - if None, the cost function is automatically selected based on the output layer activation function
+                        softmax: categorical cross-entropy, otherwise: binary cross-entropy
         :return: cost
         """
+        if cost_fun == 'MSE':
+            return np.mean((AL - Y) ** 2)/2
 
         if self.activations[-1] == DNNClassifier.softmax:
             # categorical cross-entropy
@@ -65,7 +68,7 @@ class DNNClassifier(object):
             # binary cross-entropy
             return np.mean(np.sum(-Y * np.log(AL) - (1 - Y) * np.log(1 - AL), axis=0))
 
-    def backward_propagation(self, AL, Y):
+    def backward_propagation(self, AL, Y, cost_fun=None):
         """
         Backward propagation
         :param AL: output of the model
@@ -79,8 +82,10 @@ class DNNClassifier(object):
         # for Softmax the derivative of the cost function is dL/dZ = AL - Y
         if self.activations[-1] == DNNClassifier.softmax:
             dA = AL - Y
+        elif cost_fun == 'MSE':
+            dA = AL - Y
         else:
-            dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # TODO: MSE
+            dA = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
 
         for l in reversed(range(L)):
             current_cache = self.caches[l]
@@ -94,7 +99,6 @@ class DNNClassifier(object):
             else:
                 dZ = self.activations[l](Z, derivative=True) * dA  # dL/dZ = dL/dA * dA/dZ
 
-            # TODO: MSE
             dW = 1. / m * np.dot(dZ, A_prev.T)  # dL/dW = dL/dA * dA/dZ * dZ/dW
             db = 1. / m * np.sum(dZ, axis=1, keepdims=True)  # dL/db = dL/dA * dA/dZ * dZ/db
             dA_prev = np.dot(W.T, dZ)  # dL/dA_prev = dL/dA * dA/dZ * (dZ/dA_prev = W)
@@ -116,7 +120,7 @@ class DNNClassifier(object):
             self.parameters["W" + str(l + 1)] -= learning_rate * grads["dW" + str(l + 1)]
             self.parameters["b" + str(l + 1)] -= learning_rate * grads["db" + str(l + 1)]
 
-    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1, tolerance=None, min_cost=None, print_cost=False, plot_cost=True):
+    def train(self, X, Y, learning_rate=0.01, epochs=100, batch_size=1,cost_fun=None, tolerance=None, min_cost=None, print_cost=False, plot_cost=True):
         """
         Train the model
         :param X: input data - shape (input size, number of examples)
@@ -124,6 +128,7 @@ class DNNClassifier(object):
         :param learning_rate: learning rate of the gradient descent update rule
         :param epochs: number of epochs of the optimization loop
         :param batch_size: size of a mini batch
+        :param cost_fun: cost function to use - if None, the cost function is automatically selected based on the output layer activation function
         :param tolerance: tolerance for early stopping
         :param min_cost: minimum cost for early stopping
         :param print_cost: whether to print the cost every epoch
@@ -148,9 +153,9 @@ class DNNClassifier(object):
                 X_batch = X[:, batch:batch + batch_size]  # get a mini batch
                 Y_batch = Y[:, batch:batch + batch_size]  # get a mini batch
                 AL = self.forward_propagation(X_batch)
-                cost = self.cost(AL, Y_batch)
+                cost = self.cost(AL, Y_batch, cost_fun)
                 epoch_cost.append(cost)
-                grads = self.backward_propagation(AL, Y_batch)
+                grads = self.backward_propagation(AL, Y_batch, cost_fun)
                 self.update_parameters(grads, learning_rate)
             self.cost_history.append(np.mean(epoch_cost))
             if plot_cost:
