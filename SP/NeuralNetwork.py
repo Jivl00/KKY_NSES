@@ -92,7 +92,7 @@ class DNNClassifier(object):
             A_prev, W, b = linear_cache
             m = A_prev.shape[1]
 
-            if self.activations[-1] == DNNClassifier.softmax:
+            if self.activations[l] == DNNClassifier.softmax:
                 dZ = dA
             else:
                 dZ = self.activations[l](Z, derivative=True) * dA  # dL/dZ = dL/dA * dA/dZ
